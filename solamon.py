@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, asyncio
+import argparse, asyncio, aiohttp
 
 from irctokens import build
 from ircrobots import Bot as BaseBot
@@ -74,10 +74,15 @@ class Server(BaseServer):
         payload = "\n".join(map(lambda q: f"solamon,network={self.isupport.network},server={q[0]},numeric={q[1]},name={q[2]} val={q[3]}", self.queue))
         self.queue.clear()
 
+        async with self.bot.session.post(self.bot.url, data=payload.encode("UTF-8")) as resp:
+            print(f"uploaded {len(payload)} bytes, got status {resp.status}")
+
+
 class Bot(BaseBot):
     def __init__(self, url, delay):
         super().__init__()
         self.default_delay = delay
+        self.session = aiohttp.ClientSession()
         self.url = url
 
     def create_server(self, name):
@@ -85,7 +90,7 @@ class Bot(BaseBot):
 
 async def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("url")
+    parser.add_argument("url", help="specify influxdb-compatible write endpoint")
     parser.add_argument("-d", help="delay in minutes between collecting metrics", type=int, default=10)
     parser.add_argument("-n", help="nickname to use", default="solamon")
     parser.add_argument("-s", help="irc server(s) to connect to", action='append')
