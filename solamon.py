@@ -83,10 +83,10 @@ class Server(BaseServer):
 
 
 class Bot(BaseBot):
-    def __init__(self, url, delay):
+    def __init__(self, url, delay, headers):
         super().__init__()
         self.default_delay = delay
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(headers=headers)
         self.url = url
 
     def create_server(self, name):
@@ -95,12 +95,13 @@ class Bot(BaseBot):
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", help="specify influxdb-compatible write endpoint")
+    parser.add_argument("-H", help="additional request header(s)", nargs=2, action='append')
     parser.add_argument("-d", help="delay in minutes between collecting metrics", type=int, default=10)
     parser.add_argument("-n", help="nickname to use", default="solamon")
     parser.add_argument("-s", help="irc server(s) to connect to", action='append')
     args = parser.parse_args()
 
-    bot = Bot(args.url, args.d*60)
+    bot = Bot(args.url, args.d*60, {h[0]: h[1] for h in args.H or []})
 
     for server in args.s:
         params = ConnectionParams(args.n, server, 6697)
