@@ -28,6 +28,10 @@ class Server(BaseServer):
 
     async def on_364(self, line):
         [_, server, *_] = line.params
+
+        if server.startswith("services."):
+            return
+
         self.servers.append(server)
 
     async def on_365(self, line):
