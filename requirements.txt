@@ -1,3 +1,3 @@
+aiohttp==3.11.3
 ircrobots==0.7.2
-requests==2.32.3
 
