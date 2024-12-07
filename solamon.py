@@ -10,8 +10,9 @@ from ircrobots import ConnectionParams
 class Server(BaseServer):
     def __init__(self, bot, name, delay):
         super().__init__(bot, name)
+        self.collecting = False
         self.delay = delay
-        self.servers = []
+        self.servers = set()
         self.queue = []
 
     async def line_read(self, line):
@@ -32,10 +33,14 @@ class Server(BaseServer):
         if server.startswith("services."):
             return
 
-        self.servers.append(server)
+        self.servers.add(server)
 
     async def on_365(self, line):
+        if self.collecting:
+            return
+
         asyncio.create_task(self.collection_loop())
+        self.collecting = True
 
     async def collection_loop(self):
         while True:
@@ -81,6 +86,16 @@ class Server(BaseServer):
         async with self.bot.session.post(self.bot.url, data=payload.encode("UTF-8")) as resp:
             print(f"uploaded {len(payload)} bytes, got status {resp.status}")
 
+    async def on_privmsg(self, line):
+        [target, msg] = line.params
+
+        if target != self.nickname:
+            return
+        if msg != "checklinks":
+            return
+
+        await self.send(build("LINKS", []))
+        await self.send(build("NOTICE", [line.hostmask.nickname, "OK"]))
 
 class Bot(BaseBot):
     def __init__(self, url, delay, headers):
@@ -91,6 +106,7 @@ class Bot(BaseBot):
 
     def create_server(self, name):
         return Server(self, name, self.default_delay)
+
 
 async def main():
     parser = argparse.ArgumentParser()
