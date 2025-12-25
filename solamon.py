@@ -6,6 +6,7 @@ from irctokens import build
 from ircrobots import Bot as BaseBot
 from ircrobots import Server as BaseServer
 from ircrobots import ConnectionParams
+from ircrobots.security import TLSVerifyChain, TLSNoVerify
 
 
 class Server(BaseServer):
@@ -100,12 +101,15 @@ async def main():
     )
     parser.add_argument("-n", help="nickname to use", default="solamon")
     parser.add_argument("-s", help="irc server(s) to connect to", action="append")
+    parser.add_argument("-k", help="disable tls verification", action="store_true")
     args = parser.parse_args()
 
     bot = Bot(args.url, args.d, {h[0]: h[1] for h in args.H or []})
 
     for server in args.s:
-        params = ConnectionParams(args.n, server, 6697)
+        params = ConnectionParams(
+            args.n, server, 6697, tls=TLSNoVerify() if args.k else TLSVerifyChain()
+        )
         await bot.add_server(server, params)
 
     await bot.run()
