@@ -7,6 +7,7 @@ from ircrobots import Bot as BaseBot
 from ircrobots import Server as BaseServer
 from ircrobots import ConnectionParams
 
+
 class Server(BaseServer):
     def __init__(self, bot, name, delay):
         super().__init__(bot, name)
@@ -37,37 +38,45 @@ class Server(BaseServer):
 
     async def on_252(self, line):
         [_, num, *_] = line.params
-        self.lusers['opers'] = num
+        self.lusers["opers"] = num
 
     async def on_253(self, line):
         [_, num, *_] = line.params
-        self.lusers['unknown'] = num
+        self.lusers["unknown"] = num
 
     async def on_254(self, line):
         [_, num, *_] = line.params
-        self.lusers['channels'] = num
+        self.lusers["channels"] = num
 
     async def on_265(self, line):
         [_, num, max, *_] = line.params
-        self.lusers['local'] = num
-        self.lusers['local_max'] = max
+        self.lusers["local"] = num
+        self.lusers["local_max"] = max
 
     async def on_266(self, line):
         [_, num, max, *_] = line.params
-        self.lusers['global'] = num
-        self.lusers['global_max'] = max
+        self.lusers["global"] = num
+        self.lusers["global_max"] = max
 
     async def on_212(self, line):
         [_, cmd, num, *_] = line.params
         self.stats[cmd.lower()] = num
 
     async def on_219(self, line):
-        payload = f"solamon_lusers,network={self.isupport.network},server={self.server} " + ",".join(f"{k}={v}" for k,v in self.lusers.items()) + f"\nsolamon_stats,network={self.isupport.network},server={self.server} " + ",".join(f"{k}={v}" for k,v in self.stats.items())
+        payload = (
+            f"solamon_lusers,network={self.isupport.network},server={self.server} "
+            + ",".join(f"{k}={v}" for k, v in self.lusers.items())
+            + f"\nsolamon_stats,network={self.isupport.network},server={self.server} "
+            + ",".join(f"{k}={v}" for k, v in self.stats.items())
+        )
         self.lusers.clear()
         self.stats.clear()
 
-        async with self.bot.session.post(self.bot.url, data=payload.encode("UTF-8")) as resp:
+        async with self.bot.session.post(
+            self.bot.url, data=payload.encode("UTF-8")
+        ) as resp:
             print(f"uploaded {len(payload)} bytes, got status {resp.status}")
+
 
 class Bot(BaseBot):
     def __init__(self, url, delay, headers):
@@ -83,10 +92,14 @@ class Bot(BaseBot):
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", help="specify influxdb-compatible write endpoint")
-    parser.add_argument("-H", help="additional request header(s)", nargs=2, action='append')
-    parser.add_argument("-d", help="delay in seconds between collecting metrics", type=int, default=10)
+    parser.add_argument(
+        "-H", help="additional request header(s)", nargs=2, action="append"
+    )
+    parser.add_argument(
+        "-d", help="delay in seconds between collecting metrics", type=int, default=10
+    )
     parser.add_argument("-n", help="nickname to use", default="solamon")
-    parser.add_argument("-s", help="irc server(s) to connect to", action='append')
+    parser.add_argument("-s", help="irc server(s) to connect to", action="append")
     args = parser.parse_args()
 
     bot = Bot(args.url, args.d, {h[0]: h[1] for h in args.H or []})
