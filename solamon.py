@@ -10,9 +10,7 @@ from ircrobots import ConnectionParams
 class Server(BaseServer):
     def __init__(self, bot, name, delay):
         super().__init__(bot, name)
-        self.collecting = False
         self.delay = delay
-        self.servers = set()
         self.queue = []
 
     async def line_read(self, line):
@@ -25,22 +23,7 @@ class Server(BaseServer):
         print(f"{self.name} > {line.format()}")
 
     async def on_001(self, line):
-        await self.send(build("LINKS", []))
-
-    async def on_364(self, line):
-        [_, server, *_] = line.params
-
-        if server.startswith("services."):
-            return
-
-        self.servers.add(server)
-
-    async def on_365(self, line):
-        if self.collecting:
-            return
-
         asyncio.create_task(self.collection_loop())
-        self.collecting = True
 
     async def collection_loop(self):
         while True:
@@ -48,10 +31,8 @@ class Server(BaseServer):
             await asyncio.sleep(self.delay)
 
     async def collect_once(self):
-        for server in self.servers:
-            await self.send(build("LUSERS", ["*", server]))
-            await self.send(build("STATS", ["m", server]))
-            await asyncio.sleep(30)
+        await self.send(build("LUSERS", []))
+        await self.send(build("STATS", ["m"]))
 
     async def on_252(self, line):
         [_, num, *_] = line.params
@@ -85,17 +66,6 @@ class Server(BaseServer):
 
         async with self.bot.session.post(self.bot.url, data=payload.encode("UTF-8")) as resp:
             print(f"uploaded {len(payload)} bytes, got status {resp.status}")
-
-    async def on_privmsg(self, line):
-        [target, msg] = line.params
-
-        if target != self.nickname:
-            return
-        if msg != "checklinks":
-            return
-
-        await self.send(build("LINKS", []))
-        await self.send(build("NOTICE", [line.hostmask.nickname, "OK"]))
 
 class Bot(BaseBot):
     def __init__(self, url, delay, headers):
