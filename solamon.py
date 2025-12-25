@@ -11,7 +11,8 @@ class Server(BaseServer):
     def __init__(self, bot, name, delay):
         super().__init__(bot, name)
         self.delay = delay
-        self.queue = []
+        self.lusers = {}
+        self.stats = {}
 
     async def line_read(self, line):
         print(f"{self.name} < {line.format()}")
@@ -36,33 +37,34 @@ class Server(BaseServer):
 
     async def on_252(self, line):
         [_, num, *_] = line.params
-        self.queue.append((line.source, 252, 'opers', num))
+        self.lusers['opers'] = num
 
     async def on_253(self, line):
         [_, num, *_] = line.params
-        self.queue.append((line.source, 253, 'unknown', num))
+        self.lusers['unknown'] = num
 
     async def on_254(self, line):
         [_, num, *_] = line.params
-        self.queue.append((line.source, 254, 'channels', num))
+        self.lusers['channels'] = num
 
     async def on_265(self, line):
-        [_, num, *_] = line.params
-        self.queue.append((line.source, 265, 'lusers', num))
+        [_, num, max, *_] = line.params
+        self.lusers['local'] = num
+        self.lusers['local_max'] = max
 
     async def on_266(self, line):
-        [_, num, *_] = line.params
-        self.queue.append((line.source, 266, 'gusers', num))
+        [_, num, max, *_] = line.params
+        self.lusers['global'] = num
+        self.lusers['global_max'] = max
 
     async def on_212(self, line):
         [_, cmd, num, *_] = line.params
-        self.queue.append((line.source, 212, cmd, num))
+        self.stats[cmd.lower()] = num
 
     async def on_219(self, line):
-        if not self.queue:
-            return
-        payload = "\n".join(map(lambda q: f"solamon,network={self.isupport.network},server={q[0]},numeric={q[1]},name={q[2]} val={q[3]}", self.queue))
-        self.queue.clear()
+        payload = f"solamon_lusers,network={self.isupport.network},server={self.server} " + ",".join(f"{k}={v}" for k,v in self.lusers.items()) + f"\nsolamon_stats,network={self.isupport.network},server={self.server} " + ",".join(f"{k}={v}" for k,v in self.stats.items())
+        self.lusers.clear()
+        self.stats.clear()
 
         async with self.bot.session.post(self.bot.url, data=payload.encode("UTF-8")) as resp:
             print(f"uploaded {len(payload)} bytes, got status {resp.status}")
