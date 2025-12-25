@@ -64,9 +64,9 @@ class Server(BaseServer):
 
     async def on_219(self, line):
         payload = (
-            f"solamon_lusers,network={self.isupport.network},server={self.server} "
+            f"lusers,network={self.isupport.network},server={self.server} "
             + ",".join(f"{k}={v}" for k, v in self.lusers.items())
-            + f"\nsolamon_stats,network={self.isupport.network},server={self.server} "
+            + f"\nstatsm,network={self.isupport.network},server={self.server} "
             + ",".join(f"{k}={v}" for k, v in self.stats.items())
         )
         self.lusers.clear()
